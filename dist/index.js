@@ -26,6 +26,13 @@ class MemoryCache {
     delete(key) {
         delete this.cache[key];
     }
+    deleteMany(keyRegex) {
+        Object.keys(this.cache).forEach((key) => {
+            if (keyRegex.test(key)) {
+                delete this.cache[key];
+            }
+        });
+    }
     clear() {
         this.cache = {};
     }

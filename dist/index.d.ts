@@ -9,6 +9,7 @@ export declare class MemoryCache {
     get(key: string): any;
     set(key: string, value: any, maxAge: number): void;
     delete(key: string): void;
+    deleteMany(keyRegex: RegExp): void;
     clear(): void;
 }
 export {};
