@@ -34,6 +34,14 @@ export class MemoryCache {
     delete this.cache[key];
   }
 
+  deleteMany(keyRegex: RegExp): void {
+    Object.keys(this.cache).forEach((key) => {
+      if (keyRegex.test(key)) {
+        delete this.cache[key];
+      }
+    });
+  }
+
   clear(): void {
     this.cache = {};
   }
