@@ -54,6 +54,21 @@ export class MemoryCache {
     this.cache[key] = { value, expiry };
   }
 
+  /**
+   * 尝试获取值，如果不存在或已过期，则执行 fnGetValue 函数生成新值，存入缓存并返回。
+   */
+  async getOrSet(key: string, fnGetValue: () => Promise<any>, maxAge: number): Promise<any> {
+    const cachedValue = this.get(key);
+    if (cachedValue) {
+      return cachedValue;
+    }
+
+    // 缓存未命中，执行 fnGetValue 获取新值
+    const newValue = await fnGetValue();
+    this.set(key, newValue, maxAge);
+    return newValue;
+  }
+
   delete(key: string): void {
     delete this.cache[key];
   }

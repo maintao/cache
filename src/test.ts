@@ -50,4 +50,17 @@ describe("MemoryCache", () => {
       done();
     }, 1100);
   });
+
+  it("should getOrSet item", async () => {
+    const key = "key";
+    const maxAge = 1;
+    const fnGetValue = async () => "value";
+
+    const value = await cache.getOrSet(key, fnGetValue, maxAge);
+    expect(value).toBe("value");
+
+    // 再次调用 getOrSet 时，应该从缓存中获取值
+    const cachedValue = await cache.getOrSet(key, fnGetValue, maxAge);
+    expect(cachedValue).toBe("value");
+  });
 });
