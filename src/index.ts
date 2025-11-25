@@ -11,10 +11,13 @@ export class MemoryCache {
   private readonly CLEANUP_INTERVAL = 30 * 1000; // 每30秒清理一次
   private logCacheMiss: boolean;
   private logCacheHit: boolean;
+  private logSet: boolean;
 
-  constructor(logCacheMiss: boolean = false, logCacheHit: boolean = false) {
+  constructor(options: { logCacheMiss?: boolean; logCacheHit?: boolean; logSet?: boolean } = {}) {
+    const { logCacheMiss = false, logCacheHit = false, logSet = false } = options;
     this.logCacheMiss = logCacheMiss;
     this.logCacheHit = logCacheHit;
+    this.logSet = logSet;
     this.startCleanupTimer();
   }
 
@@ -63,6 +66,9 @@ export class MemoryCache {
   set(key: string, value: any, maxAge: number): void {
     const expiry = Date.now() + maxAge * 1000;
     this.cache[key] = { value, expiry };
+    if (this.logSet) {
+      console.log(`[Cache set] key=${key} maxAge=${maxAge}s`);
+    }
   }
 
   /**

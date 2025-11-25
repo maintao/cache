@@ -5,7 +5,7 @@ describe("MemoryCache", () => {
 
   beforeEach(() => {
     // 在每个测试用例开始之前，创建一个新的 MemoryCache 实例
-    cache = new MemoryCache();
+    cache = new MemoryCache({ logCacheMiss: true, logCacheHit: true, logSet: true });
   });
 
   it("should allow setting and getting items", () => {
