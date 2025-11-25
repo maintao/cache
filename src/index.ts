@@ -6,20 +6,23 @@ interface Cache {
 }
 
 export class MemoryCache {
-  cache: Cache = {};
+  cache!: Cache;
   private cleanupTimer: ReturnType<typeof setInterval> | null = null;
   private readonly CLEANUP_INTERVAL = 30 * 1000; // 每30秒清理一次
   private logCacheMiss: boolean;
   private logCacheHit: boolean;
   private logSet: boolean;
-  private instanceId: string;
 
   constructor(options: { logCacheMiss?: boolean; logCacheHit?: boolean; logSet?: boolean } = {}) {
     const { logCacheMiss = false, logCacheHit = false, logSet = false } = options;
     this.logCacheMiss = logCacheMiss;
     this.logCacheHit = logCacheHit;
     this.logSet = logSet;
-    this.instanceId = Math.random().toString(36).substring(2);
+    const g = globalThis as any;
+    if (!g.__fnmain_mem_cache__) {
+      g.__fnmain_mem_cache__ = {};
+    }
+    this.cache = g.__fnmain_mem_cache__ as Cache;
     this.startCleanupTimer();
   }
 
@@ -44,9 +47,7 @@ export class MemoryCache {
 
     if (!cachedItem) {
       if (this.logCacheMiss) {
-        console.log(
-          `[Cache miss][${this.instanceId}][${new Date().toLocaleTimeString()}] key=${key}`
-        );
+        console.log(`[Cache miss][${new Date().toLocaleTimeString()}] key=${key}`);
       }
       return null;
     }
@@ -55,16 +56,12 @@ export class MemoryCache {
 
     if (cachedItem.expiry > now) {
       if (this.logCacheHit) {
-        console.log(
-          `[Cache hit][${this.instanceId}][${new Date().toLocaleTimeString()}] key=${key}`
-        );
+        console.log(`[Cache hit][${new Date().toLocaleTimeString()}] key=${key}`);
       }
       return cachedItem.value;
     } else {
       if (this.logCacheMiss) {
-        console.log(
-          `[Cache miss](expired)[${this.instanceId}][${new Date().toLocaleTimeString()}] key=${key}`
-        );
+        console.log(`[Cache miss](expired)[${new Date().toLocaleTimeString()}] key=${key}`);
       }
       delete this.cache[key]; // 及时删除过期项
       return null;
@@ -75,11 +72,7 @@ export class MemoryCache {
     const expiry = Date.now() + maxAge * 1000;
     this.cache[key] = { value, expiry };
     if (this.logSet) {
-      console.log(
-        `[Cache set][${
-          this.instanceId
-        }][${new Date().toLocaleTimeString()}] key=${key} maxAge=${maxAge}s`
-      );
+      console.log(`[Cache set][${new Date().toLocaleTimeString()}] key=${key} maxAge=${maxAge}s`);
     }
   }
 
@@ -111,7 +104,9 @@ export class MemoryCache {
   }
 
   clear(): void {
-    this.cache = {};
+    Object.keys(this.cache).forEach((k) => {
+      delete this.cache[k];
+    });
   }
 
   destroy(): void {

@@ -12,14 +12,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.RedisCache = exports.MemoryCache = void 0;
 class MemoryCache {
     constructor(options = {}) {
-        this.cache = {};
         this.cleanupTimer = null;
         this.CLEANUP_INTERVAL = 30 * 1000; // 每30秒清理一次
         const { logCacheMiss = false, logCacheHit = false, logSet = false } = options;
         this.logCacheMiss = logCacheMiss;
         this.logCacheHit = logCacheHit;
         this.logSet = logSet;
-        this.instanceId = Math.random().toString(36).substring(2);
+        const g = globalThis;
+        if (!g.__fnmain_mem_cache__) {
+            g.__fnmain_mem_cache__ = {};
+        }
+        this.cache = g.__fnmain_mem_cache__;
         this.startCleanupTimer();
     }
     startCleanupTimer() {
@@ -40,20 +43,20 @@ class MemoryCache {
         const cachedItem = this.cache[key];
         if (!cachedItem) {
             if (this.logCacheMiss) {
-                console.log(`[Cache miss][${this.instanceId}][${new Date().toLocaleTimeString()}] key=${key}`);
+                console.log(`[Cache miss][${new Date().toLocaleTimeString()}] key=${key}`);
             }
             return null;
         }
         const now = Date.now();
         if (cachedItem.expiry > now) {
             if (this.logCacheHit) {
-                console.log(`[Cache hit][${this.instanceId}][${new Date().toLocaleTimeString()}] key=${key}`);
+                console.log(`[Cache hit][${new Date().toLocaleTimeString()}] key=${key}`);
             }
             return cachedItem.value;
         }
         else {
             if (this.logCacheMiss) {
-                console.log(`[Cache miss](expired)[${this.instanceId}][${new Date().toLocaleTimeString()}] key=${key}`);
+                console.log(`[Cache miss](expired)[${new Date().toLocaleTimeString()}] key=${key}`);
             }
             delete this.cache[key]; // 及时删除过期项
             return null;
@@ -63,7 +66,7 @@ class MemoryCache {
         const expiry = Date.now() + maxAge * 1000;
         this.cache[key] = { value, expiry };
         if (this.logSet) {
-            console.log(`[Cache set][${this.instanceId}][${new Date().toLocaleTimeString()}] key=${key} maxAge=${maxAge}s`);
+            console.log(`[Cache set][${new Date().toLocaleTimeString()}] key=${key} maxAge=${maxAge}s`);
         }
     }
     /**
@@ -92,7 +95,9 @@ class MemoryCache {
         });
     }
     clear() {
-        this.cache = {};
+        Object.keys(this.cache).forEach((k) => {
+            delete this.cache[k];
+        });
     }
     destroy() {
         if (this.cleanupTimer) {

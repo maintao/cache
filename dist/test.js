@@ -10,6 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const index_1 = require("./index");
+const index_2 = require("./index");
 describe("MemoryCache", () => {
     let cache;
     beforeEach(() => {
@@ -62,6 +63,107 @@ describe("MemoryCache", () => {
         // 再次调用 getOrSet 时，应该从缓存中获取值
         const cachedValue = yield cache.getOrSet(key, fnGetValue, maxAge);
         expect(cachedValue).toBe("value");
+    }));
+});
+describe("RedisCache", () => {
+    const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+    const createMockRedis = () => {
+        const store = {};
+        return {
+            get(key) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    const item = store[key];
+                    if (!item)
+                        return null;
+                    const now = Date.now();
+                    if (item.expiry !== undefined && item.expiry <= now) {
+                        delete store[key];
+                        return null;
+                    }
+                    return item.value;
+                });
+            },
+            set(key, value, ...args) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    const item = { value };
+                    if (args.length >= 2 && String(args[0]).toUpperCase() === "EX") {
+                        const ttl = Number(args[1]) || 0;
+                        if (ttl > 0)
+                            item.expiry = Date.now() + ttl * 1000;
+                    }
+                    store[key] = item;
+                    return "OK";
+                });
+            },
+        };
+    };
+    it("should allow setting and getting items", () => __awaiter(void 0, void 0, void 0, function* () {
+        const client = createMockRedis();
+        const cache = new index_2.RedisCache(client, { keyPrefix: "test:" });
+        yield cache.set("key", { a: 1 }, 5);
+        const value = yield cache.get("key");
+        expect(value).toEqual({ a: 1 });
+    }));
+    it("should return null for missing items", () => __awaiter(void 0, void 0, void 0, function* () {
+        const client = createMockRedis();
+        const cache = new index_2.RedisCache(client, { keyPrefix: "test:" });
+        const value = yield cache.get("missing-key");
+        expect(value).toBeNull();
+    }));
+    it("should expire items after TTL", () => __awaiter(void 0, void 0, void 0, function* () {
+        const client = createMockRedis();
+        const cache = new index_2.RedisCache(client, { keyPrefix: "test:" });
+        yield cache.set("key", "value", 1);
+        yield sleep(1100);
+        const value = yield cache.get("key");
+        expect(value).toBeNull();
+    }));
+    it("should getOrSet item and reuse cached value", () => __awaiter(void 0, void 0, void 0, function* () {
+        const client = createMockRedis();
+        const cache = new index_2.RedisCache(client, { keyPrefix: "test:" });
+        let calls = 0;
+        const fnGetValue = () => __awaiter(void 0, void 0, void 0, function* () {
+            calls += 1;
+            return { v: "value" };
+        });
+        const v1 = yield cache.getOrSet("key", fnGetValue, 5);
+        expect(v1).toEqual({ v: "value" });
+        const v2 = yield cache.getOrSet("key", fnGetValue, 5);
+        expect(v2).toEqual({ v: "value" });
+        expect(calls).toBe(1);
+    }));
+    it("should treat falsy cached values as hit", () => __awaiter(void 0, void 0, void 0, function* () {
+        const client = createMockRedis();
+        const cache = new index_2.RedisCache(client, { keyPrefix: "test:" });
+        let calls = 0;
+        const fnGetZero = () => __awaiter(void 0, void 0, void 0, function* () {
+            calls += 1;
+            return 0;
+        });
+        const r1 = yield cache.getOrSet("zero", fnGetZero, 5);
+        expect(r1).toBe(0);
+        const r2 = yield cache.getOrSet("zero", fnGetZero, 5);
+        expect(r2).toBe(0);
+        expect(calls).toBe(1);
+    }));
+    it("should deduplicate concurrent getOrSet calls", () => __awaiter(void 0, void 0, void 0, function* () {
+        const client = createMockRedis();
+        const cache = new index_2.RedisCache(client, { keyPrefix: "test:" });
+        let calls = 0;
+        const fnSlow = () => __awaiter(void 0, void 0, void 0, function* () {
+            calls += 1;
+            yield sleep(100);
+            return "done";
+        });
+        const [a, b, c] = yield Promise.all([
+            cache.getOrSet("con", fnSlow, 5),
+            cache.getOrSet("con", fnSlow, 5),
+            cache.getOrSet("con", fnSlow, 5),
+        ]);
+        expect(a).toBe("done");
+        expect(b).toBe("done");
+        expect(c).toBe("done");
+        expect(calls).toBe(1);
     }));
 });
 //# sourceMappingURL=test.js.map
