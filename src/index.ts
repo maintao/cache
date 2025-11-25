@@ -8,10 +8,13 @@ interface Cache {
 export class MemoryCache {
   cache: Cache = {};
   private cleanupTimer: ReturnType<typeof setInterval> | null = null;
-  private readonly GRACE_PERIOD = 30 * 1000; // 30秒宽限期
   private readonly CLEANUP_INTERVAL = 30 * 1000; // 每30秒清理一次
+  private logCacheMiss: boolean;
+  private logCacheHit: boolean;
 
-  constructor() {
+  constructor(logCacheMiss: boolean = false, logCacheHit: boolean = false) {
+    this.logCacheMiss = logCacheMiss;
+    this.logCacheHit = logCacheHit;
     this.startCleanupTimer();
   }
 
@@ -25,8 +28,7 @@ export class MemoryCache {
     const now = Date.now();
     Object.keys(this.cache).forEach((key) => {
       const cachedItem = this.cache[key];
-      // 只删除过期超过宽限期的数据
-      if (cachedItem.expiry + this.GRACE_PERIOD < now) {
+      if (cachedItem.expiry < now) {
         delete this.cache[key];
       }
     });
@@ -36,15 +38,24 @@ export class MemoryCache {
     const cachedItem = this.cache[key];
 
     if (!cachedItem) {
+      if (this.logCacheMiss) {
+        console.log(`[Cache miss] key=${key}`);
+      }
       return null;
     }
 
     const now = Date.now();
 
-    // 只检查是否过期，不删除数据
     if (cachedItem.expiry > now) {
+      if (this.logCacheHit) {
+        console.log(`[Cache hit] key=${key}`);
+      }
       return cachedItem.value;
     } else {
+      if (this.logCacheMiss) {
+        console.log(`[Cache miss](expired) key=${key} `);
+      }
+      delete this.cache[key]; // 及时删除过期项
       return null;
     }
   }
