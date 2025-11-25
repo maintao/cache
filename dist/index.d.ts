@@ -7,9 +7,15 @@ interface Cache {
 export declare class MemoryCache {
     cache: Cache;
     private cleanupTimer;
-    private readonly GRACE_PERIOD;
     private readonly CLEANUP_INTERVAL;
-    constructor();
+    private logCacheMiss;
+    private logCacheHit;
+    private logSet;
+    constructor(options?: {
+        logCacheMiss?: boolean;
+        logCacheHit?: boolean;
+        logSet?: boolean;
+    });
     private startCleanupTimer;
     private cleanupExpiredItems;
     get(key: string): any;

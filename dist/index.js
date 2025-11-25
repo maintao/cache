@@ -11,11 +11,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.MemoryCache = void 0;
 class MemoryCache {
-    constructor() {
+    constructor(options = {}) {
         this.cache = {};
         this.cleanupTimer = null;
-        this.GRACE_PERIOD = 30 * 1000; // 30秒宽限期
         this.CLEANUP_INTERVAL = 30 * 1000; // 每30秒清理一次
+        const { logCacheMiss = false, logCacheHit = false, logSet = false } = options;
+        this.logCacheMiss = logCacheMiss;
+        this.logCacheHit = logCacheHit;
+        this.logSet = logSet;
         this.startCleanupTimer();
     }
     startCleanupTimer() {
@@ -27,8 +30,7 @@ class MemoryCache {
         const now = Date.now();
         Object.keys(this.cache).forEach((key) => {
             const cachedItem = this.cache[key];
-            // 只删除过期超过宽限期的数据
-            if (cachedItem.expiry + this.GRACE_PERIOD < now) {
+            if (cachedItem.expiry < now) {
                 delete this.cache[key];
             }
         });
@@ -36,20 +38,32 @@ class MemoryCache {
     get(key) {
         const cachedItem = this.cache[key];
         if (!cachedItem) {
+            if (this.logCacheMiss) {
+                console.log(`[Cache miss] key=${key}`);
+            }
             return null;
         }
         const now = Date.now();
-        // 只检查是否过期，不删除数据
         if (cachedItem.expiry > now) {
+            if (this.logCacheHit) {
+                console.log(`[Cache hit] key=${key}`);
+            }
             return cachedItem.value;
         }
         else {
+            if (this.logCacheMiss) {
+                console.log(`[Cache miss](expired) key=${key} `);
+            }
+            delete this.cache[key]; // 及时删除过期项
             return null;
         }
     }
     set(key, value, maxAge) {
         const expiry = Date.now() + maxAge * 1000;
         this.cache[key] = { value, expiry };
+        if (this.logSet) {
+            console.log(`[Cache set] key=${key} maxAge=${maxAge}s`);
+        }
     }
     /**
      * 尝试获取值，如果不存在或已过期，则执行 fnGetValue 函数生成新值，存入缓存并返回。

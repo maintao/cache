@@ -42,7 +42,7 @@ export class MemoryCache {
 
     if (!cachedItem) {
       if (this.logCacheMiss) {
-        console.log(`[Cache miss] key=${key}`);
+        console.log(`[Cache miss][${new Date().toLocaleTimeString()}] key=${key}`);
       }
       return null;
     }
@@ -51,12 +51,12 @@ export class MemoryCache {
 
     if (cachedItem.expiry > now) {
       if (this.logCacheHit) {
-        console.log(`[Cache hit] key=${key}`);
+        console.log(`[Cache hit][${new Date().toLocaleTimeString()}] key=${key}`);
       }
       return cachedItem.value;
     } else {
       if (this.logCacheMiss) {
-        console.log(`[Cache miss](expired) key=${key} `);
+        console.log(`[Cache miss](expired)[${new Date().toLocaleTimeString()}] key=${key}`);
       }
       delete this.cache[key]; // 及时删除过期项
       return null;
