@@ -11,6 +11,7 @@ export declare class MemoryCache {
     private logCacheMiss;
     private logCacheHit;
     private logSet;
+    private instanceId;
     constructor(options?: {
         logCacheMiss?: boolean;
         logCacheHit?: boolean;
