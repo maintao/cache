@@ -1,6 +1,6 @@
 {
   "name": "@fnmain/cache",
-  "version": "0.3.4",
+  "version": "0.4.0",
   "description": "cache in local memory, localStorage, redis",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

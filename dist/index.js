@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.MemoryCache = void 0;
+exports.RedisCache = exports.MemoryCache = void 0;
 class MemoryCache {
     constructor(options = {}) {
         this.cache = {};
@@ -72,7 +72,7 @@ class MemoryCache {
     getOrSet(key, fnGetValue, maxAge) {
         return __awaiter(this, void 0, void 0, function* () {
             const cachedValue = this.get(key);
-            if (cachedValue) {
+            if (cachedValue !== null) {
                 return cachedValue;
             }
             // 缓存未命中，执行 fnGetValue 获取新值
@@ -103,4 +103,83 @@ class MemoryCache {
     }
 }
 exports.MemoryCache = MemoryCache;
+class RedisCache {
+    constructor(client, options = {}) {
+        this.inflight = {};
+        this.client = client;
+        const { keyPrefix = "", logCacheMiss = false, logCacheHit = false, serialize, deserialize, } = options;
+        this.keyPrefix = keyPrefix;
+        this.logCacheMiss = logCacheMiss;
+        this.logCacheHit = logCacheHit;
+        this.serialize = serialize !== null && serialize !== void 0 ? serialize : ((v) => JSON.stringify(v));
+        this.deserialize =
+            deserialize !== null && deserialize !== void 0 ? deserialize : ((t) => {
+                try {
+                    return JSON.parse(t);
+                }
+                catch (_a) {
+                    return t;
+                }
+            });
+    }
+    formatKey(key) {
+        return this.keyPrefix ? `${this.keyPrefix}${key}` : key;
+    }
+    get(key) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const redisKey = this.formatKey(key);
+            const text = yield this.client.get(redisKey);
+            if (text === null) {
+                if (this.logCacheMiss) {
+                    console.log(`[Cache miss] key=${key}`);
+                }
+                return null;
+            }
+            if (this.logCacheHit) {
+                console.log(`[Cache hit] key=${key}`);
+            }
+            return this.deserialize(text);
+        });
+    }
+    set(key, value, maxAge) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const redisKey = this.formatKey(key);
+            const text = this.serialize(value);
+            // ioredis: 以秒为单位设置 TTL
+            yield this.client.set(redisKey, text, "EX", maxAge);
+        });
+    }
+    getOrSet(key, fnGetValue, maxAge) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const cachedValue = yield this.get(key);
+            if (cachedValue !== null) {
+                return cachedValue;
+            }
+            // 并发去重：同一个 key 的计算只进行一次
+            const existing = this.inflight[key];
+            if (existing !== undefined) {
+                return existing;
+            }
+            const promise = (() => __awaiter(this, void 0, void 0, function* () {
+                const computed = yield fnGetValue();
+                // 二次确认：计算期间若已有其他写入则直接返回最新值，避免覆盖
+                const latest = yield this.get(key);
+                if (latest !== null) {
+                    return latest;
+                }
+                yield this.set(key, computed, maxAge);
+                return computed;
+            }))();
+            this.inflight[key] = promise;
+            // 使用 then/catch 清理占位，避免依赖 Promise.finally
+            promise.then(() => {
+                delete this.inflight[key];
+            }, () => {
+                delete this.inflight[key];
+            });
+            return promise;
+        });
+    }
+}
+exports.RedisCache = RedisCache;
 //# sourceMappingURL=index.js.map

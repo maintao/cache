@@ -30,5 +30,28 @@ export declare class MemoryCache {
     clear(): void;
     destroy(): void;
 }
+export declare class RedisCache {
+    private client;
+    private keyPrefix;
+    private logCacheMiss;
+    private logCacheHit;
+    private inflight;
+    private serialize;
+    private deserialize;
+    constructor(client: {
+        get: (key: string) => Promise<string | null>;
+        set: (key: string, value: string, ...args: any[]) => Promise<any>;
+    }, options?: {
+        keyPrefix?: string;
+        logCacheMiss?: boolean;
+        logCacheHit?: boolean;
+        serialize?: (value: any) => string;
+        deserialize?: (text: string) => any;
+    });
+    private formatKey;
+    get(key: string): Promise<any>;
+    set(key: string, value: any, maxAge: number): Promise<void>;
+    getOrSet(key: string, fnGetValue: () => Promise<any>, maxAge: number): Promise<any>;
+}
 export {};
 //# sourceMappingURL=index.d.ts.map
