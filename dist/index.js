@@ -39,20 +39,20 @@ class MemoryCache {
         const cachedItem = this.cache[key];
         if (!cachedItem) {
             if (this.logCacheMiss) {
-                console.log(`[Cache miss] key=${key}`);
+                console.log(`[Cache miss][${new Date().toLocaleTimeString()}] key=${key}`);
             }
             return null;
         }
         const now = Date.now();
         if (cachedItem.expiry > now) {
             if (this.logCacheHit) {
-                console.log(`[Cache hit] key=${key}`);
+                console.log(`[Cache hit][${new Date().toLocaleTimeString()}] key=${key}`);
             }
             return cachedItem.value;
         }
         else {
             if (this.logCacheMiss) {
-                console.log(`[Cache miss](expired) key=${key} `);
+                console.log(`[Cache miss](expired)[${new Date().toLocaleTimeString()}] key=${key}`);
             }
             delete this.cache[key]; // 及时删除过期项
             return null;
@@ -62,7 +62,7 @@ class MemoryCache {
         const expiry = Date.now() + maxAge * 1000;
         this.cache[key] = { value, expiry };
         if (this.logSet) {
-            console.log(`[Cache set] key=${key} maxAge=${maxAge}s`);
+            console.log(`[Cache set][${new Date().toLocaleTimeString()}] key=${key} maxAge=${maxAge}s`);
         }
     }
     /**

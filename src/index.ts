@@ -67,7 +67,7 @@ export class MemoryCache {
     const expiry = Date.now() + maxAge * 1000;
     this.cache[key] = { value, expiry };
     if (this.logSet) {
-      console.log(`[Cache set] key=${key} maxAge=${maxAge}s`);
+      console.log(`[Cache set][${new Date().toLocaleTimeString()}] key=${key} maxAge=${maxAge}s`);
     }
   }
 
